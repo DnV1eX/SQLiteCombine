@@ -57,7 +57,7 @@ final class SQLiteCombineTests: XCTestCase {
     }
     
     
-    func testValueOutput() throws {
+    func testOutputValue() throws {
 
         let selectCompletionExpectation = expectation(description: "Select completion")
         let selectValueExpectation = expectation(description: "Select value")
@@ -74,7 +74,7 @@ final class SQLiteCombineTests: XCTestCase {
     }
     
     
-    func testTupleOutput() throws {
+    func testOutputTuple() throws {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
@@ -106,7 +106,7 @@ final class SQLiteCombineTests: XCTestCase {
     }
     
     
-    func testArrayOutput() throws {
+    func testOutputArray() throws {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
@@ -228,6 +228,29 @@ final class SQLiteCombineTests: XCTestCase {
             }
         
         waitForExpectations(timeout: 1, handler: nil)
+    }
+    
+    
+    func testCompletionFailure() throws {
+
+        let failureExpectation = expectation(description: "Receive failure")
+        let successExpectation = expectation(description: "Receive success")
+        successExpectation.isInverted = true
+        let valueExpectation = expectation(description: "Receive value")
+        valueExpectation.isInverted = true
+        _ = db.publisher(sql: "!")
+            .sink { completion in
+                if case let .failure(error) = completion {
+                    XCTAssert(error.localizedDescription.contains("DBError error 1"))
+                    failureExpectation.fulfill()
+                } else {
+                    successExpectation.fulfill()
+                }
+            } receiveValue: {
+                valueExpectation.fulfill()
+            }
+        
+        waitForExpectations(timeout: 0, handler: nil)
     }
 }
 
