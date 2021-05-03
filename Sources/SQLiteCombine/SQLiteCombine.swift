@@ -43,6 +43,21 @@ public final class SQLite {
     public func publisher<Output>(sql: String, _ values: SQLiteValue?..., outputType: Output.Type = Void.self as! Output.Type) -> Publisher<Output> {
         Publisher(db: db, sql: sql, values: values)
     }
+    
+    
+    public func trace(events: TraceEvents = []) {
+        
+        sqlite3_trace_v2(db, UInt32(events.rawValue), { event, _, p, x in
+            switch Int32(event) {
+            case SQLITE_TRACE_STMT: print("SQLite trace stmt", p ?? "", x.map { String(cString: $0.assumingMemoryBound(to: CChar.self)) } ?? "")
+            case SQLITE_TRACE_PROFILE: print("SQLite trace profile", p ?? "", x.map { TimeInterval($0.load(as: Int64.self)) * 1e-9 } ?? "")
+            case SQLITE_TRACE_ROW: print("SQLite trace row", p ?? "")
+            case SQLITE_TRACE_CLOSE: print("SQLite trace close", p ?? "")
+            default: break
+            }
+            return 0
+        }, nil)
+    }
 }
 
 
@@ -62,6 +77,23 @@ public extension SQLite {
         public static let fullMutex = OpenFlags(rawValue: SQLITE_OPEN_FULLMUTEX)
         public static let sharedCache = OpenFlags(rawValue: SQLITE_OPEN_SHAREDCACHE)
         public static let privateCache = OpenFlags(rawValue: SQLITE_OPEN_PRIVATECACHE)
+    }
+}
+
+
+public extension SQLite {
+    
+    struct TraceEvents: OptionSet {
+        public let rawValue: Int32
+        public init(rawValue: Int32) {
+            self.rawValue = rawValue
+        }
+        public static let stmt = TraceEvents(rawValue: SQLITE_TRACE_STMT)
+        public static let profile = TraceEvents(rawValue: SQLITE_TRACE_PROFILE)
+        public static let row = TraceEvents(rawValue: SQLITE_TRACE_ROW)
+        public static let close = TraceEvents(rawValue: SQLITE_TRACE_CLOSE)
+        
+        public static let all: Self = [.stmt, .profile, .row, .close]
     }
 }
 

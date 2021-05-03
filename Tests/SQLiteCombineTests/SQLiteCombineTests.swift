@@ -23,6 +23,7 @@ final class SQLiteCombineTests: XCTestCase {
         
         if db == nil {
             db = try SQLite()
+            db.trace(events: .all)
         }
         
         let completionExpectation = expectation(description: "Create Table completion")
