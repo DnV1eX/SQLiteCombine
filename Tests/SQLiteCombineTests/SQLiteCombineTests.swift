@@ -253,6 +253,39 @@ final class SQLiteCombineTests: XCTestCase {
         
         waitForExpectations(timeout: 0, handler: nil)
     }
+    
+    
+    @available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
+    func testMultipleStatements() throws {
+
+        let insertCompletionExpectation = expectation(description: "Insert completion")
+        let insertValueExpectation = expectation(description: "Insert value")
+        insertValueExpectation.isInverted = true
+        _ = ["INSERT INTO test (two) VALUES ('duo')",
+             "INSERT INTO test (two) VALUES ('zwei')",
+             "INSERT INTO test (two) VALUES ('dva')"].publisher
+            .flatMap(db.publisher)
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                insertCompletionExpectation.fulfill()
+            } receiveValue: {
+                insertValueExpectation.fulfill()
+            }
+
+        let selectCompletionExpectation = expectation(description: "Select completion")
+        let selectValueExpectation = expectation(description: "Select value")
+        _ = db.publisher(sql: "SELECT two FROM test", outputType: String.self)
+            .collect()
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectCompletionExpectation.fulfill()
+            } receiveValue: { rows in
+                XCTAssertEqual(rows, ["duo", "zwei", "dva"])
+                selectValueExpectation.fulfill()
+            }
+        
+        waitForExpectations(timeout: 0, handler: nil)
+    }
 }
 
 

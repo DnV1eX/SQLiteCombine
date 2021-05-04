@@ -40,7 +40,15 @@ public final class SQLite {
     }
     
     
-    public func publisher<Output>(sql: String, _ values: SQLiteValue?..., outputType: Output.Type = Void.self as! Output.Type) -> Publisher<Output> {
+    public func publisher<Output>(sql: String) -> Publisher<Output> {
+        Publisher(db: db, sql: sql, values: [])
+    }
+    
+    public func publisher<Output>(sql: String, _ values: SQLiteValue?...) -> Publisher<Output> {
+        Publisher(db: db, sql: sql, values: values)
+    }
+    
+    public func publisher<Output>(sql: String, _ values: SQLiteValue?..., outputType: Output.Type) -> Publisher<Output> {
         Publisher(db: db, sql: sql, values: values)
     }
     
