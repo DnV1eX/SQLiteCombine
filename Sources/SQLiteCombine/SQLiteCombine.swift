@@ -137,6 +137,7 @@ public extension SQLite {
             do {
                 try subscriber.receive(subscription: Subscription(subscriber, db, sql, values))
             } catch {
+                subscriber.receive(subscription: Subscriptions.empty)
                 subscriber.receive(completion: .failure(error))
             }
         }
@@ -179,8 +180,9 @@ extension SQLite.Publisher {
         }
         
         deinit {
-//            sqlite3_finalize(stmt)
-            cancel()
+            if stmt != nil {
+                cancel()
+            }
         }
         
         
@@ -202,7 +204,6 @@ extension SQLite.Publisher {
                     }
                 default:
                     cancel()
-//                    return
                 }
             }
         }

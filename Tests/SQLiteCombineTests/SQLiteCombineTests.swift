@@ -239,7 +239,7 @@ final class SQLiteCombineTests: XCTestCase {
         successExpectation.isInverted = true
         let valueExpectation = expectation(description: "Receive value")
         valueExpectation.isInverted = true
-        _ = db.publisher(sql: "!")
+        _ = db.publisher(sql: "CREATE TABLE test (one, two, three, four, five)")
             .sink { completion in
                 if case let .failure(error) = completion {
                     XCTAssert(error.localizedDescription.contains("DBError error 1"))
