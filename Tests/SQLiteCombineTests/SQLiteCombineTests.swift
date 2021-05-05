@@ -46,7 +46,7 @@ final class SQLiteCombineTests: XCTestCase {
         let completionExpectation = expectation(description: "Drop Table completion")
         let valueExpectation = expectation(description: "Drop Table value")
         valueExpectation.isInverted = true
-        _ = db.publisher(sql: "DROP TABLE test")
+        _ = db.publisher(sql: "DROP TABLE IF EXISTS test")
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
                 completionExpectation.fulfill()
@@ -282,6 +282,24 @@ final class SQLiteCombineTests: XCTestCase {
             } receiveValue: { rows in
                 XCTAssertEqual(rows, ["duo", "zwei", "dva"])
                 selectValueExpectation.fulfill()
+            }
+        
+        waitForExpectations(timeout: 0, handler: nil)
+    }
+    
+    
+    func testDatabaseLock() throws {
+        
+        let completionExpectation = expectation(description: "Drop Table completion")
+        let valueExpectation = expectation(description: "Drop Table value")
+        valueExpectation.isInverted = true
+        _ = db.publisher(sql: "SELECT count(*) FROM test")
+            .catch { _ in self.db.publisher(sql: "DROP TABLE test") }
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                completionExpectation.fulfill()
+            } receiveValue: {
+                valueExpectation.fulfill()
             }
         
         waitForExpectations(timeout: 0, handler: nil)

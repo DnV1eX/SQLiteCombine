@@ -206,8 +206,8 @@ extension SQLite.Publisher {
                         let input = try row()
                         demand += subscriber.receive(input)
                     } catch {
-                        subscriber.receive(completion: .failure(error))
                         sqlite3_finalize(stmt)
+                        subscriber.receive(completion: .failure(error))
                         self.stmt = nil
                     }
                 default:
