@@ -28,7 +28,6 @@ final class SQLiteCombineTests: XCTestCase {
         
         let completionExpectation = expectation(description: "Create Table completion")
         let valueExpectation = expectation(description: "Create Table value")
-        valueExpectation.isInverted = true
         _ = db.publisher(sql: "CREATE TABLE test (one, two, three, four, five)")
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -45,7 +44,6 @@ final class SQLiteCombineTests: XCTestCase {
         
         let completionExpectation = expectation(description: "Drop Table completion")
         let valueExpectation = expectation(description: "Drop Table value")
-        valueExpectation.isInverted = true
         _ = db.publisher(sql: "DROP TABLE IF EXISTS test")
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -79,7 +77,6 @@ final class SQLiteCombineTests: XCTestCase {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
-        insertValueExpectation.isInverted = true
         _ = db.publisher(sql: "INSERT INTO test (one, two, three, four, five) VALUES (1, 2.0, '3', x'04', NULL)")
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -103,6 +100,21 @@ final class SQLiteCombineTests: XCTestCase {
                 selectValueExpectation.fulfill()
             }
         
+        let selectImplicitCompletionExpectation = expectation(description: "Select implicit completion")
+        let selectImplicitValueExpectation = expectation(description: "Select implicit value")
+        _ = db.publisher(sql: "SELECT * FROM test")
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectImplicitCompletionExpectation.fulfill()
+            } receiveValue: { (int: Int, double: Double, string: String, data: Data, optional: Any?) in
+                XCTAssertEqual(int, 1)
+                XCTAssertEqual(double, 2.0)
+                XCTAssertEqual(string, "3")
+                XCTAssertEqual(data, Data([0x04]))
+                XCTAssertNil(optional)
+                selectImplicitValueExpectation.fulfill()
+            }
+        
         waitForExpectations(timeout: 0, handler: nil)
     }
     
@@ -111,7 +123,6 @@ final class SQLiteCombineTests: XCTestCase {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
-        insertValueExpectation.isInverted = true
         _ = db.publisher(sql: "INSERT INTO test (one, two, three, four) VALUES (?, ?, ?, ?)", 0, -1, Int.min, Int.max)
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -149,6 +160,17 @@ final class SQLiteCombineTests: XCTestCase {
                 selectValueExpectation.fulfill()
             }
         
+        let selectVoidCompletionExpectation = expectation(description: "Select Void completion")
+        let selectVoidValueExpectation = expectation(description: "Select Void value")
+        selectVoidValueExpectation.isInverted = true
+        _ = db.publisher(sql: "SELECT * FROM test")
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectVoidCompletionExpectation.fulfill()
+            } receiveValue: {
+                selectVoidValueExpectation.fulfill()
+            }
+        
         waitForExpectations(timeout: 0, handler: nil)
     }
     
@@ -157,7 +179,6 @@ final class SQLiteCombineTests: XCTestCase {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
-        insertValueExpectation.isInverted = true
         _ = db.publisher(sql: "INSERT INTO test (one) VALUES (?), (?), (?)", "unus", "eins", "odin")
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -188,7 +209,6 @@ final class SQLiteCombineTests: XCTestCase {
         
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
-        insertValueExpectation.isInverted = true
         _ = db.publisher(sql: "INSERT INTO test (one, two, three, four, five) VALUES (?, ?, ?, ?, ?)", t.int, t.double, t.string, t.data, t.optional)
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -199,7 +219,7 @@ final class SQLiteCombineTests: XCTestCase {
 
         let selectCompletionExpectation = expectation(description: "Select completion")
         let selectValueExpectation = expectation(description: "Select value")
-        _ = db.publisher(sql: "SELECT * FROM test", outputType: (Int, Double, String, Data, Data?).self)
+        _ = db.publisher(sql: "SELECT * FROM test")
             .map(Test.init)
             .sink { completion in
                 if case let .failure(error) = completion { XCTFail(String(describing: error)) }
@@ -234,10 +254,10 @@ final class SQLiteCombineTests: XCTestCase {
     
     func testCompletionFailure() throws {
 
-        let failureExpectation = expectation(description: "Receive failure")
-        let successExpectation = expectation(description: "Receive success")
+        let failureExpectation = expectation(description: "Create Table failure")
+        let successExpectation = expectation(description: "Create Table success")
         successExpectation.isInverted = true
-        let valueExpectation = expectation(description: "Receive value")
+        let valueExpectation = expectation(description: "Create Table value")
         valueExpectation.isInverted = true
         _ = db.publisher(sql: "CREATE TABLE test (one, two, three, four, five)")
             .sink { completion in
@@ -260,7 +280,7 @@ final class SQLiteCombineTests: XCTestCase {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
-        insertValueExpectation.isInverted = true
+        insertValueExpectation.expectedFulfillmentCount = 3
         _ = ["INSERT INTO test (two) VALUES ('duo')",
              "INSERT INTO test (two) VALUES ('zwei')",
              "INSERT INTO test (two) VALUES ('dva')"].publisher
@@ -292,7 +312,6 @@ final class SQLiteCombineTests: XCTestCase {
         
         let completionExpectation = expectation(description: "Drop Table completion")
         let valueExpectation = expectation(description: "Drop Table value")
-        valueExpectation.isInverted = true
         _ = db.publisher(sql: "SELECT count(*) FROM test")
             .catch { _ in self.db.publisher(sql: "DROP TABLE test") }
             .sink { completion in

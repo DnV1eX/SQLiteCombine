@@ -198,21 +198,22 @@ extension SQLite.Publisher {
             
             var demand = demand
             
-            while let stmt = stmt, demand > 0 {
-                demand -= 1
-                switch Result(code: sqlite3_step(stmt)) {
-                case .success(let result) where result == .row:
-                    do {
+            do {
+                while let stmt = stmt, demand > 0 {
+                    demand -= 1
+                    switch try Result(code: sqlite3_step(stmt)).get() {
+                    case .row:
                         let input = try row()
                         demand += subscriber.receive(input)
-                    } catch {
-                        sqlite3_finalize(stmt)
-                        subscriber.receive(completion: .failure(error))
-                        self.stmt = nil
+                    default:
+                        if let input = () as? Output, sqlite3_column_count(stmt) == 0 {
+                            _ = subscriber.receive(input)
+                        }
+                        completion(.finished)
                     }
-                default:
-                    cancel()
                 }
+            } catch {
+                completion(.failure(error))
             }
         }
         
@@ -254,6 +255,14 @@ extension SQLite.Publisher {
             }
             
             return output
+        }
+        
+        
+        private func completion(_ completion: Subscribers.Completion<Failure>) {
+            
+            sqlite3_finalize(stmt)
+            subscriber.receive(completion: completion)
+            stmt = nil
         }
     }
 }
