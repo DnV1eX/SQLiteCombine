@@ -58,7 +58,7 @@ public final class SQLite {
         sqlite3_trace_v2(db, UInt32(events.rawValue), { event, _, p, x in
             switch Int32(event) {
             case SQLITE_TRACE_STMT: print("SQLite trace stmt", p ?? "", x.map { String(cString: $0.assumingMemoryBound(to: CChar.self)) } ?? "")
-            case SQLITE_TRACE_PROFILE: print("SQLite trace profile", p ?? "", x.map { TimeInterval($0.load(as: Int64.self)) * 1e-9 } ?? "")
+            case SQLITE_TRACE_PROFILE: print("SQLite trace profile", p ?? "", x.map { TimeInterval($0.load(as: Int64.self)) / 1e9 } ?? "")
             case SQLITE_TRACE_ROW: print("SQLite trace row", p ?? "")
             case SQLITE_TRACE_CLOSE: print("SQLite trace close", p ?? "")
             default: break
