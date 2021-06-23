@@ -276,7 +276,7 @@ final class SQLiteCombineTests: XCTestCase {
     
     
     @available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *)
-    func testMultipleStatements() throws {
+    func testMultipleRequests() throws {
 
         let insertCompletionExpectation = expectation(description: "Insert completion")
         let insertValueExpectation = expectation(description: "Insert value")
@@ -319,6 +319,82 @@ final class SQLiteCombineTests: XCTestCase {
                 completionExpectation.fulfill()
             } receiveValue: {
                 valueExpectation.fulfill()
+            }
+        
+        waitForExpectations(timeout: 0, handler: nil)
+    }
+    
+    
+    func testParameters() throws {
+
+        let insertCompletionExpectation = expectation(description: "Insert completion")
+        let insertValueExpectation = expectation(description: "Insert value")
+        _ = db.publisher(sql: "INSERT INTO test VALUES (?, :two, :two, ?, ?1)", 0.1, 0.2, 0.3)
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                insertCompletionExpectation.fulfill()
+            } receiveValue: {
+                insertValueExpectation.fulfill()
+            }
+
+        let selectCompletionExpectation = expectation(description: "Select completion")
+        let selectValueExpectation = expectation(description: "Select value")
+        _ = db.publisher(sql: "SELECT one, two, three, four, five FROM test")
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectCompletionExpectation.fulfill()
+            } receiveValue: { (row: [Double]) in
+                XCTAssertEqual(row, [0.1, 0.2, 0.2, 0.3, 0.1])
+                selectValueExpectation.fulfill()
+            }
+        
+        waitForExpectations(timeout: 0, handler: nil)
+    }
+    
+    
+    func testStatement() throws {
+
+        let table = "test"
+        let columns = ("one", "two", "three", "four", "five")
+        
+        let insertCompletionExpectation = expectation(description: "Insert completion")
+        let insertValueExpectation = expectation(description: "Insert value")
+        _ = db.publisher("INSERT INTO \(K: table) VALUES (\(1, 2.0, "3", Data([0x04]), nil))")
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                insertCompletionExpectation.fulfill()
+            } receiveValue: {
+                insertValueExpectation.fulfill()
+            }
+
+        let selectCompletionExpectation = expectation(description: "Select completion")
+        let selectValueExpectation = expectation(description: "Select value")
+        _ = db.publisher("SELECT * FROM test", outputType: (int: Int, double: Double, string: String, data: Data, optional: Any?).self)
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectCompletionExpectation.fulfill()
+            } receiveValue: { row in
+                XCTAssertEqual(row.int, 1)
+                XCTAssertEqual(row.double, 2.0)
+                XCTAssertEqual(row.string, "3")
+                XCTAssertEqual(row.data, Data([0x04]))
+                XCTAssertNil(row.optional)
+                selectValueExpectation.fulfill()
+            }
+        
+        let selectImplicitCompletionExpectation = expectation(description: "Select implicit completion")
+        let selectImplicitValueExpectation = expectation(description: "Select implicit value")
+        _ = db.publisher("SELECT \(K: columns.0, columns.1, columns.2, columns.3, columns.4) FROM \(K: table) WHERE \(K: columns.0)=\(1) AND \(K: columns.1)=\(2.0) AND \(K: columns.2)=\("3") AND \(K: columns.3)=\(Data([0x04])) AND \(K: columns.4) IS \(nil)")
+            .sink { completion in
+                if case let .failure(error) = completion { XCTFail(String(describing: error)) }
+                selectImplicitCompletionExpectation.fulfill()
+            } receiveValue: { (int: Int, double: Double, string: String, data: Data, optional: Any?) in
+                XCTAssertEqual(int, 1)
+                XCTAssertEqual(double, 2.0)
+                XCTAssertEqual(string, "3")
+                XCTAssertEqual(data, Data([0x04]))
+                XCTAssertNil(optional)
+                selectImplicitValueExpectation.fulfill()
             }
         
         waitForExpectations(timeout: 0, handler: nil)

@@ -52,7 +52,15 @@ public final class SQLite {
         Publisher(db: db, sql: sql, values: values)
     }
     
+    public func publisher<Output>(_ statement: Statement) -> Publisher<Output> {
+        Publisher(db: db, sql: statement.sql, values: statement.values)
+    }
     
+    public func publisher<Output>(_ statement: Statement, outputType: Output.Type) -> Publisher<Output> {
+        Publisher(db: db, sql: statement.sql, values: statement.values)
+    }
+    
+
     public func trace(events: TraceEvents = []) {
         
         sqlite3_trace_v2(db, UInt32(events.rawValue), { event, _, p, x in
@@ -263,6 +271,51 @@ extension SQLite.Publisher {
             sqlite3_finalize(stmt)
             subscriber.receive(completion: completion)
             stmt = nil
+        }
+    }
+}
+
+
+public extension SQLite {
+    
+    struct Statement: ExpressibleByStringInterpolation {
+        
+        public struct StringInterpolation: StringInterpolationProtocol {
+            
+            @usableFromInline var sql: String = ""
+            @usableFromInline var values: [SQLiteValue?] = []
+
+            @inlinable public init(literalCapacity: Int, interpolationCount: Int) {
+                sql.reserveCapacity(literalCapacity + interpolationCount * 3)
+                values.reserveCapacity(interpolationCount)
+            }
+
+            @inlinable public mutating func appendLiteral(_ literal: StringLiteralType) {
+                sql += literal
+            }
+            
+            @inlinable public mutating func appendInterpolation(_ parameters: SQLiteValue?...) {
+                guard !parameters.isEmpty else { return }
+                sql += repeatElement("?", count: parameters.count).joined(separator: ",")
+                values += parameters
+            }
+            
+            @inlinable public mutating func appendInterpolation<S: StringProtocol>(K identifiers: S...) {
+                sql += identifiers.map { "\"\($0)\"" }.joined(separator: ",")
+            }
+        }
+        
+        let sql: String
+        let values: [SQLiteValue?]
+
+        public init(stringLiteral value: StringLiteralType) {
+            sql = value
+            values = []
+        }
+        
+        public init(stringInterpolation: StringInterpolation) {
+            sql = stringInterpolation.sql
+            values = stringInterpolation.values
         }
     }
 }
