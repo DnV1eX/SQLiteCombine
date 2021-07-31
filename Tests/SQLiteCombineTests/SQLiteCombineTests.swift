@@ -399,6 +399,18 @@ final class SQLiteCombineTests: XCTestCase {
         
         waitForExpectations(timeout: 0, handler: nil)
     }
+    
+    
+    func testArray2Tuple() throws {
+        
+        XCTAssert([].tuple() as! () == ())
+        XCTAssertEqual([1].tuple() as? Int, 1)
+        for i in 2...32 {
+            let array = Array(1...i)
+            XCTAssertEqual(array.tuple().map(Mirror.init)?.children.map(\.value) as? [Int], array)
+        }
+        XCTAssertNil(Array(1...33).tuple())
+    }
 }
 
 
